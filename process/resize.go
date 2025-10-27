@@ -29,6 +29,7 @@ func clamp(v float64) uint8 {
 	return uint8(v + 0.5) // Round to nearest
 }
 
+// resizes an image to the specified newWidth, newHeight
 func ResizeLanczos3(src [][]color.RGBA, newWidth, newHeight int) [][]color.RGBA {
 	srcHeight := len(src)
 	if srcHeight == 0 {
