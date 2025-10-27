@@ -183,3 +183,124 @@ func FloydSteinbergDither(image [][]color.RGBA, colorPalette palette.Palette) []
 	}
 	return result
 }
+
+func StuckiDither(image [][]color.RGBA, colorPalette palette.Palette) [][]color.RGBA {
+	height := len(image)
+	if height == 0 {
+		return image
+	}
+	width := len(image[0])
+	if width == 0 {
+		return image
+	}
+
+	work := make([][]struct {
+		R, G, B float64
+		A       uint8
+	}, height)
+
+	for y := 0; y < height; y++ {
+		work[y] = make([]struct {
+			R, G, B float64
+			A       uint8
+		}, width)
+		for x := 0; x < width; x++ {
+			work[y][x].R = float64(image[y][x].R)
+			work[y][x].G = float64(image[y][x].G)
+			work[y][x].B = float64(image[y][x].B)
+			work[y][x].A = image[y][x].A
+		}
+	}
+	result := make([][]color.RGBA, height)
+	for i := range result {
+		result[i] = make([]color.RGBA, width)
+	}
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			oldR := clamp(work[y][x].R)
+			oldG := clamp(work[y][x].G)
+			oldB := clamp(work[y][x].B)
+			oldA := work[y][x].A
+
+			hexCode := fmt.Sprintf("#%02x%02x%02x", oldR, oldG, oldB)
+
+			newPixel := findClosestColor(hexCode, colorPalette)
+			// Preserve original alpha channel
+			newPixel.A = oldA
+			result[y][x] = newPixel
+
+			errR := work[y][x].R - float64(newPixel.R)
+			errG := work[y][x].G - float64(newPixel.G)
+			errB := work[y][x].B - float64(newPixel.B)
+
+			// Distribute error to neighboring pixels using Stucki matrix
+			// Row 0 (current row): right pixels get 8/42 and 4/42
+			if x+1 < width {
+				work[y][x+1].R += errR * 8.0 / 42.0
+				work[y][x+1].G += errG * 8.0 / 42.0
+				work[y][x+1].B += errB * 8.0 / 42.0
+			}
+			if x+2 < width {
+				work[y][x+2].R += errR * 4.0 / 42.0
+				work[y][x+2].G += errG * 4.0 / 42.0
+				work[y][x+2].B += errB * 4.0 / 42.0
+			}
+
+			// Row 1 (next row): 2, 4, 8, 4, 2
+			if y+1 < height {
+				if x-2 >= 0 {
+					work[y+1][x-2].R += errR * 2.0 / 42.0
+					work[y+1][x-2].G += errG * 2.0 / 42.0
+					work[y+1][x-2].B += errB * 2.0 / 42.0
+				}
+				if x-1 >= 0 {
+					work[y+1][x-1].R += errR * 4.0 / 42.0
+					work[y+1][x-1].G += errG * 4.0 / 42.0
+					work[y+1][x-1].B += errB * 4.0 / 42.0
+				}
+				work[y+1][x].R += errR * 8.0 / 42.0
+				work[y+1][x].G += errG * 8.0 / 42.0
+				work[y+1][x].B += errB * 8.0 / 42.0
+				if x+1 < width {
+					work[y+1][x+1].R += errR * 4.0 / 42.0
+					work[y+1][x+1].G += errG * 4.0 / 42.0
+					work[y+1][x+1].B += errB * 4.0 / 42.0
+				}
+				if x+2 < width {
+					work[y+1][x+2].R += errR * 2.0 / 42.0
+					work[y+1][x+2].G += errG * 2.0 / 42.0
+					work[y+1][x+2].B += errB * 2.0 / 42.0
+				}
+			}
+
+			// Row 2 (second next row): 1, 2, 4, 2, 1
+			if y+2 < height {
+				if x-2 >= 0 {
+					work[y+2][x-2].R += errR * 1.0 / 42.0
+					work[y+2][x-2].G += errG * 1.0 / 42.0
+					work[y+2][x-2].B += errB * 1.0 / 42.0
+				}
+				if x-1 >= 0 {
+					work[y+2][x-1].R += errR * 2.0 / 42.0
+					work[y+2][x-1].G += errG * 2.0 / 42.0
+					work[y+2][x-1].B += errB * 2.0 / 42.0
+				}
+				work[y+2][x].R += errR * 4.0 / 42.0
+				work[y+2][x].G += errG * 4.0 / 42.0
+				work[y+2][x].B += errB * 4.0 / 42.0
+				if x+1 < width {
+					work[y+2][x+1].R += errR * 2.0 / 42.0
+					work[y+2][x+1].G += errG * 2.0 / 42.0
+					work[y+2][x+1].B += errB * 2.0 / 42.0
+				}
+				if x+2 < width {
+					work[y+2][x+2].R += errR * 1.0 / 42.0
+					work[y+2][x+2].G += errG * 1.0 / 42.0
+					work[y+2][x+2].B += errB * 1.0 / 42.0
+				}
+			}
+		}
+	}
+	return result
+}
