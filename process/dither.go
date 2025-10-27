@@ -74,7 +74,7 @@ func getBayerThreshold(x int, y int) float64 {
 	return value
 }
 
-func OrderedDither(image [][]color.RGBA, colorPallete palette.Palette) [][]color.RGBA {
+func OrderedDither(image [][]color.RGBA, colorPalette palette.Palette) [][]color.RGBA {
 	height := len(image)
 	width := len(image[0])
 
@@ -94,9 +94,92 @@ func OrderedDither(image [][]color.RGBA, colorPallete palette.Palette) [][]color
 
 			hexCode := fmt.Sprintf("#%02x%02x%02x", int(r), int(g), int(b))
 
-			result[y][x] = findClosestColor(hexCode, colorPallete)
+			result[y][x] = findClosestColor(hexCode, colorPalette)
 		}
 	}
 
+	return result
+}
+
+func FloydSteinbergDither(image [][]color.RGBA, colorPalette palette.Palette) [][]color.RGBA {
+	height := len(image)
+	if height == 0 {
+		return image
+	}
+	width := len(image[0])
+	if width == 0 {
+		return image
+	}
+
+	work := make([][]struct {
+		R, G, B float64
+		A       uint8
+	}, height)
+
+	for y := 0; y < height; y++ {
+		work[y] = make([]struct {
+			R, G, B float64
+			A       uint8
+		}, width)
+		for x := 0; x < width; x++ {
+			work[y][x].R = float64(image[y][x].R)
+			work[y][x].G = float64(image[y][x].G)
+			work[y][x].B = float64(image[y][x].B)
+			work[y][x].A = image[y][x].A
+		}
+	}
+	result := make([][]color.RGBA, height)
+	for i := range result {
+		result[i] = make([]color.RGBA, width)
+	}
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			oldR := clamp(work[y][x].R)
+			oldG := clamp(work[y][x].G)
+			oldB := clamp(work[y][x].B)
+			oldA := work[y][x].A
+
+			hexCode := fmt.Sprintf("#%02x%02x%02x", oldR, oldG, oldB)
+
+			newPixel := findClosestColor(hexCode, colorPalette)
+			// Preserve original alpha channel
+			newPixel.A = oldA
+			result[y][x] = newPixel
+
+			errR := work[y][x].R - float64(newPixel.R)
+			errG := work[y][x].G - float64(newPixel.G)
+			errB := work[y][x].B - float64(newPixel.B)
+
+			// Distribute error to neighboring pixels using Floyd-Steinberg matrix
+			// Right pixel (x+1, y) gets 7/16 of error
+			if x+1 < width {
+				work[y][x+1].R += errR * 7.0 / 16.0
+				work[y][x+1].G += errG * 7.0 / 16.0
+				work[y][x+1].B += errB * 7.0 / 16.0
+			}
+
+			// Bottom-left pixel (x-1, y+1) gets 3/16 of error
+			if y+1 < height && x-1 >= 0 {
+				work[y+1][x-1].R += errR * 3.0 / 16.0
+				work[y+1][x-1].G += errG * 3.0 / 16.0
+				work[y+1][x-1].B += errB * 3.0 / 16.0
+			}
+
+			// Bottom pixel (x, y+1) gets 5/16 of error
+			if y+1 < height {
+				work[y+1][x].R += errR * 5.0 / 16.0
+				work[y+1][x].G += errG * 5.0 / 16.0
+				work[y+1][x].B += errB * 5.0 / 16.0
+			}
+
+			// Bottom-right pixel (x+1, y+1) gets 1/16 of error
+			if y+1 < height && x+1 < width {
+				work[y+1][x+1].R += errR * 1.0 / 16.0
+				work[y+1][x+1].G += errG * 1.0 / 16.0
+				work[y+1][x+1].B += errB * 1.0 / 16.0
+			}
+		}
+	}
 	return result
 }
