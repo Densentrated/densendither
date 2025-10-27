@@ -186,3 +186,37 @@ func AddToPalette(name string, colors ...string) (Palette, error) {
 	// return updated palette
 	return Palette{name, existingColors}, nil
 }
+
+// GetPalette loads a palette from the config file by name
+func GetPalette(name string) (Palette, error) {
+	// validate input
+	if name == "" {
+		return Palette{}, errors.New("palette name cannot be empty")
+	}
+
+	// load config
+	config, err := readConfig()
+	if err != nil {
+		return Palette{}, err
+	}
+
+	// check if palette exists
+	colors, exists := config[name]
+	if !exists {
+		return Palette{}, fmt.Errorf("palette '%s' not found", name)
+	}
+
+	// return palette
+	return Palette{name, colors}, nil
+}
+
+// ListPalettes returns a map of all palette names and their colors from the config file
+func ListPalettes() (map[string][]string, error) {
+	// load config
+	config, err := readConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
