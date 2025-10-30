@@ -147,9 +147,9 @@ func FloydSteinbergDither(image [][]color.RGBA, colorPalette palette.Palette) []
 			newPixel.A = oldA
 			result[y][x] = newPixel
 
-			errR := work[y][x].R - float64(newPixel.R)
-			errG := work[y][x].G - float64(newPixel.G)
-			errB := work[y][x].B - float64(newPixel.B)
+			errR := float64(oldR) - float64(newPixel.R)
+			errG := float64(oldG) - float64(newPixel.G)
+			errB := float64(oldB) - float64(newPixel.B)
 
 			// Distribute error to neighboring pixels using Floyd-Steinberg matrix
 			// Right pixel (x+1, y) gets 7/16 of error
@@ -230,9 +230,9 @@ func StuckiDither(image [][]color.RGBA, colorPalette palette.Palette) [][]color.
 			newPixel.A = oldA
 			result[y][x] = newPixel
 
-			errR := work[y][x].R - float64(newPixel.R)
-			errG := work[y][x].G - float64(newPixel.G)
-			errB := work[y][x].B - float64(newPixel.B)
+			errR := float64(oldR) - float64(newPixel.R)
+			errG := float64(oldG) - float64(newPixel.G)
+			errB := float64(oldB) - float64(newPixel.B)
 
 			// Distribute error to neighboring pixels using Stucki matrix
 			// Row 0 (current row): right pixels get 8/42 and 4/42
